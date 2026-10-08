@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>RoomieRadar - Matches</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+  <style>
+    /* keep your original styling (kept concise) */
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #e75480;
+      min-height: 100vh;
+      position: relative;
+    }
+    body::before {
+      content: "";
+      position: absolute; top: 0; left: 0; width:100%; height:100%;
+      background-image: linear-gradient(to right, rgba(255,255,255,0.2) 1px, transparent 1px),
+                        linear-gradient(to bottom, rgba(255,255,255,0.2) 1px, transparent 1px);
+      background-size: 80px 80px;
+      z-index: -1; pointer-events: none;
+    }
+    .matches-container { display:grid; gap:24px; padding:24px; max-width:1200px; margin:0 auto; z-index:1; }
+    @media (min-width:640px){ .matches-container{ grid-template-columns:repeat(2,1fr); } }
+    @media (min-width:1024px){ .matches-container{ grid-template-columns:repeat(3,1fr); } }
+    .match-card{ background:#f7ede1; border-radius:16px; box-shadow:0 4px 12px rgba(0,0,0,0.08); overflow:hidden; transition:transform .3s, box-shadow .3s; }
+    .match-card:hover{ transform:translateY(-5px); box-shadow:0 10px 20px rgba(0,0,0,0.15); }
+    .card-image{ width:100%; height:200px; object-fit:cover; }
+    .card-info{ padding:16px; }
+    .card-info h3{ font-size:1.25rem; font-weight:700; color:#e75480; margin-bottom:8px; }
+    .detail-item{ display:flex; align-items:center; font-size:0.95rem; color:#4b5563; margin-bottom:6px; }
+    .detail-item i{ margin-right:8px; color:#8b5cf6; }
+    .hobbies-list{ margin-top:12px; padding-top:12px; border-top:1px solid #e5e7eb; }
+    .hobbies-list span{ display:inline-block; background:#fce7f3; color:#be185d; padding:4px 10px; border-radius:9999px; font-size:0.8rem; font-weight:500; margin-right:6px; margin-bottom:6px; }
+    .no-matches{ text-align:center; padding:50px; grid-column:1/-1; margin-top:50px; background:#f7ede1; border-radius:16px; box-shadow:0 4px 12px rgba(0,0,0,0.08); z-index:1; }
+    .header{ background:#f7ede1; padding:1rem 1.5rem; box-shadow:0 2px 4px rgba(0,0,0,0.05); margin-bottom:24px; display:flex; justify-content:space-between; align-items:center; z-index:1; }
+    .header-logo{ height:40px; width:auto; }
+    .spinner{ border:4px solid #f3f3f3; border-top:4px solid #e75480; border-radius:50%; width:40px; height:40px; animation:spin 2s linear infinite; margin:50px auto; z-index:1; }
+    @keyframes spin { 0%{transform:rotate(0deg);} 100%{transform:rotate(360deg);} }
+
+    /* Chat modal */
+    .modal-overlay{ position:fixed; inset:0; background:rgba(0,0,0,0.5); display:flex; justify-content:center; align-items:center; z-index:1000; backdrop-filter: blur(6px); opacity:0; visibility:hidden; transition:opacity .25s, visibility .25s; }
+    .modal-overlay.visible{ opacity:1; visibility:visible; }
+    .chat-container-modal{ width:90%; max-width:600px; height:80vh; background:#f7ede1; border-radius:15px; box-shadow:0 8px 30px rgba(0,0,0,0.3); display:flex; flex-direction:column; overflow:hidden; transform:scale(.95); transition:transform .25s; }
+    .modal-overlay.visible .chat-container-modal{ transform:scale(1); }
+    .chat-header{ background:#e75480; color:white; padding:15px; font-weight:600; display:flex; align-items:center; justify-content:space-between; }
+    .chat-messages{ flex-grow:1; padding:15px; overflow-y:auto; display:flex; flex-direction:column; gap:10px; background:#f9f9f9; }
+    .message{ max-width:70%; padding:10px 15px; border-radius:15px; line-height:1.4; }
+    .message.sent{ background:#8b5cf6; color:white; align-self:flex-end; border-bottom-right-radius:3px; }
+    .message.received{ background:#eee; color:#333; align-self:flex-start; border-bottom-left-radius:3px; }
+    .chat-input{ display:flex; padding:15px; border-top:1px solid #eee; background:white; }
+    .chat-input input{ flex-grow:1; padding:10px; border:1px solid #ccc; border-radius:20px; margin-right:10px; }
+    .chat-input button{ background:#e75480; color:white; border:none; border-radius:50%; width:40px; height:40px; cursor:pointer; font-size:1.2em; display:flex; align-items:center; justify-content:center; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <img src="/images/blogo.png" alt="RoomieRadar Logo" class="header-logo">
+    <a href="/preferences.html" class="px-4 py-2 text-sm font-semibold text-white bg-pink-500 rounded-lg shadow hover:bg-purple-600 transition duration-150">
+      <i class='bx bx-filter-alt'></i> Preferences
+    </a>
+  </div>
+
+  <div id="loading-spinner" class="spinner"></div>
+
+  <div class="matches-container" id="card-container" style="display:none;"></div>
+
+  <div class="no-matches" id="no-matches" style="display:none;">
+    <i class='bx bx-search' style="font-size:48px;color:#e75480;"></i>
+    <p class="text-lg font-semibold">No more potential roomies for now. Check back later!</p>
+    <p class="text-sm text-gray-500 mt-2">Try adjusting your matching preferences.</p>
+  </div>
+
+  <!-- CHAT MODAL -->
+  <div id="chat-modal-overlay" class="modal-overlay" aria-hidden="true">
+    <div class="chat-container-modal" role="dialog" aria-modal="true" aria-labelledby="chat-recipient-name">
+      <div class="chat-header">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <i class='bx bx-arrow-back back-btn' style="cursor:pointer;font-size:18px;" onclick="closeChatModal()"></i>
+          <span id="chat-recipient-name">Chatting with...</span>
+        </div>
+        <div></div>
+      </div>
+
+      <div class="chat-messages" id="chat-messages" aria-live="polite"></div>
+
+      <div class="chat-input">
+        <input id="message-input" type="text" placeholder="Type a message..." autocomplete="off" />
+        <button id="send-button" aria-label="Send message"><i class='bx bx-send'></i></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- socket.io client (assumes server serves socket.io on same origin) -->
+  <script src="/socket.io/socket.io.js"></script>
+
+  <script>
+    // -------------------------
+    // Data + DOM refs
+    // -------------------------
+    const container = document.getElementById('card-container');
+    const loadingSpinner = document.getElementById('loading-spinner');
+    const noMatchesDiv = document.getElementById('no-matches');
+
+    // Chat refs
+    const chatModalOverlay = document.getElementById('chat-modal-overlay');
+    const chatRecipientName = document.getElementById('chat-recipient-name');
+    const chatMessages = document.getElementById('chat-messages');
+    const messageInput = document.getElementById('message-input');
+    const sendButton = document.getElementById('send-button');
+
+    let matches = [];
+    let currentUserId = null;           // logged-in user's profile.user id
+    let socket = null;
+    let currentChatMatchId = null;      // the userId of the match we're chatting with
+    let chatHistory = {};               // in-memory cache: { otherId: [ {text,type,ts} ] }
+
+    // -------------------------
+    // Utilities
+    // -------------------------
+    function createMatchCard(match) {
+      const card = document.createElement('div');
+      card.className = 'match-card';
+      card.dataset.userId = match.id;
+
+      const hobbiesHtml = Array.isArray(match.hobbies) && match.hobbies.length
+        ? match.hobbies.map(h => `<span>${escapeHtml(h)}</span>`).join('')
+        : '<p class="text-gray-400">None listed</p>';
+
+      const matchScore = typeof match.matchScore === 'number' ? match.matchScore : 80;
+      const scoreColor = matchScore >= 75 ? 'bg-pink-100 text-pink-700' :
+                         matchScore >= 50 ? 'bg-purple-100 text-purple-700' :
+                         'bg-gray-100 text-gray-500';
+
+      let imgSrc = match.profilePhoto || 'https://placehold.co/400x400/cccccc/333333?text=No+Image';
+      if (typeof imgSrc === 'string') imgSrc = imgSrc.trim();
+
+      card.innerHTML = `
+        <img src="${escapeAttr(imgSrc)}" alt="${escapeAttr(match.username || 'User')}'s Profile Photo" class="card-image"
+             onerror="this.onerror=null;this.src='https://placehold.co/400x400/cccccc/333333?text=No+Image'">
+        <div class="card-info">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <h3>${escapeHtml(match.username || 'Unknown User')}</h3>
+            <span class="text-xl font-bold p-2 px-3 rounded-full ${scoreColor} shadow-inner">${matchScore}%</span>
+          </div>
+          <div class="detail-item"><i class='bx bxs-school'></i><span>${escapeHtml(match.department || 'N/A')}</span></div>
+          <div class="detail-item"><i class='bx bx-calendar'></i><span>${escapeHtml(match.year || 'N/A')}</span></div>
+          <div class="hobbies-list"><p class="font-semibold text-gray-700 mb-2">Hobbies:</p>${hobbiesHtml}</div>
+          <button class="connect-btn w-full mt-4 py-2 font-semibold text-white bg-pink-500 rounded-lg shadow-md hover:bg-pink-600 transition duration-150 flex items-center justify-center" data-id="${escapeAttr(match.id)}" data-name="${escapeAttr(match.username || '')}">
+            <i class='bx bxs-chat mr-2'></i> Connect
+          </button>
+        </div>
+      `;
+      return card;
+    }
+
+    function renderMatches() {
+      loadingSpinner.style.display = 'none';
+      container.innerHTML = '';
+
+      const displayMatches = matches;
+
+      if (!displayMatches.length) {
+        container.style.display = 'none';
+        noMatchesDiv.style.display = 'block';
+        return;
+      }
+
+      container.style.display = 'grid';
+      noMatchesDiv.style.display = 'none';
+
+      displayMatches.sort((a,b) => (b.matchScore || 0) - (a.matchScore || 0));
+      displayMatches.forEach(m => container.appendChild(createMatchCard(m)));
+
+      // attach connect handlers
+      document.querySelectorAll('.connect-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const id = e.currentTarget.dataset.id;
+          const name = e.currentTarget.dataset.name;
+          openChatModal(id, name);
+        });
+      });
+    }
+
+    function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+    function escapeAttr(s){ return escapeHtml(s).replace(/"/g,'&quot;'); }
+
+    // -------------------------
+    // Backend fetch helpers
+    // -------------------------
+    async function fetchCurrentUser() {
+      try {
+        const res = await fetch('/api/profile/me', { credentials: 'include' });
+        if (!res.ok) throw new Error('Not authenticated or failed to fetch profile');
+        const data = await res.json();
+        // Expect backend profile record to include `user` (ObjectId string) or `userId`
+        currentUserId = data.user || data.userId || (data._id ? data._id : null);
+        return data;
+      } catch (err) {
+        console.warn('Failed to fetch current profile:', err);
+        return null;
+      }
+    }
+
+    async function fetchMatchesFromBackend() {
+      try {
+        const res = await fetch('/api/profile/matches', { credentials: 'include' });
+        if (!res.ok) throw new Error('Failed to load matches from backend');
+        const payload = await res.json();
+        const profiles = payload.matches || [];
+
+        matches = profiles.map(p => ({
+        id: p.id,                                        // user ID
+        username: p.fullName || 'Unknown',
+        department: p.department || 'N/A',               // correct
+        year: p.yearOfStudy || 'N/A',                    // correct
+        hobbies: Array.isArray(p.hobbies) ? p.hobbies : [],
+        profilePhoto: p.profilePicture || '',
+        matchScore: p.matchScore ?? 0                    // correct score
+      }));
+
+
+        renderMatches();
+      } catch (err) {
+        console.error('Error loading matches:', err);
+        loadingSpinner.style.display = 'none';
+        noMatchesDiv.style.display = 'block';
+      }
+    }
+
+    function extractHobbiesFromBio(bio) {
+      const keywords = ['reading','painting','drawing','dancing','writing','gossiping','editing','sleeping','resting','hiking','coding','coffee'];
+      const found = [];
+      const s = (bio||'').toLowerCase();
+      keywords.forEach(k => { if (s.includes(k)) found.push(capitalize(k)); });
+      return found;
+    }
+    function capitalize(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
+
+    // -------------------------
+    // Chat history persistence & Socket.IO
+    // -------------------------
+    function setupSocketIo() {
+      try {
+        socket = io(); // same origin
+      } catch (e) {
+        console.warn('Socket.IO client not available:', e);
+        socket = null;
+      }
+
+      if (!socket) return;
+
+      socket.on('connect', () => {
+        console.log('Socket connected', socket.id);
+        if (currentUserId) socket.emit('registerUser', currentUserId);
+      });
+
+      // incoming private message saved by server and forwarded to recipient
+      socket.on('newMessage', ({ senderId, message, timestamp }) => {
+        if (!senderId) return;
+        if (!chatHistory[senderId]) chatHistory[senderId] = [];
+        chatHistory[senderId].push({ text: message, type: 'received', ts: timestamp || Date.now() });
+
+        // if modal currently open for that sender, append live
+        if (currentChatMatchId === senderId) appendMessageToModal(message, 'received');
+      });
+
+      socket.on('messageSent', ({ message }) => {
+        // ack - nothing necessary; local UI already appended
+        console.debug('messageSent ack', message);
+      });
+
+      socket.on('error', e => console.error('Socket error', e));
+      socket.on('disconnect', () => console.log('Socket disconnected'));
+    }
+
+    // compute chatId same way server uses: sorted join
+    function computeChatId(a,b){ return [String(a), String(b)].sort().join('_'); }
+
+    // load chat history from backend for a given otherId
+    async function loadChatHistory(otherId) {
+      try {
+        const res = await fetch(`/api/chat/${encodeURIComponent(otherId)}`, { credentials: 'include' });
+        if (!res.ok) throw new Error('Failed to load chat history');
+        const msgs = await res.json();
+        // normalize to local format and cache
+        chatHistory[otherId] = (msgs || []).map(m => ({
+          text: m.text,
+          type: (String(m.senderId) === String(currentUserId)) ? 'sent' : 'received',
+          ts: new Date(m.timestamp).getTime()
+        }));
+      } catch (err) {
+        console.warn('No chat history or failed to fetch:', err);
+        chatHistory[otherId] = chatHistory[otherId] || [];
+      }
+    }
+
+    // -------------------------
+    // Chat modal actions
+    // -------------------------
+    async function openChatModal(matchId, username) {
+      currentChatMatchId = matchId;
+      chatRecipientName.textContent = `Chatting with ${username || 'Match'}`;
+      chatModalOverlay.classList.add('visible');
+
+      // Ensure history present (fetch from backend)
+      if (!chatHistory[matchId] || chatHistory[matchId].length === 0) {
+        await loadChatHistory(matchId);
+      }
+
+      chatMessages.innerHTML = '';
+      (chatHistory[matchId] || []).forEach(m => appendMessageToModal(m.text, m.type));
+      messageInput.focus();
+    }
+
+    function closeChatModal() {
+      chatModalOverlay.classList.remove('visible');
+      currentChatMatchId = null;
+      chatMessages.innerHTML = '';
+      messageInput.value = '';
+    }
+
+    function appendMessageToModal(text, type) {
+      const el = document.createElement('div');
+      el.className = `message ${type === 'sent' ? 'sent' : 'received'}`;
+      el.textContent = text;
+      chatMessages.appendChild(el);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    async function sendMessage() {
+      const text = messageInput.value.trim();
+      if (!text || !currentChatMatchId) return;
+
+      // optimistic UI
+      if (!chatHistory[currentChatMatchId]) chatHistory[currentChatMatchId] = [];
+      chatHistory[currentChatMatchId].push({ text, type: 'sent', ts: Date.now() });
+      appendMessageToModal(text, 'sent');
+      messageInput.value = '';
+
+      // send via socket
+      if (socket && socket.connected) {
+        socket.emit('privateMessage', { recipientId: currentChatMatchId, message: text });
+      } else {
+        // as fallback, POST to backend endpoint to save message (if you implement it)
+        try {
+          await fetch('/api/chat/send', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ recipientId: currentChatMatchId, message: text })
+          });
+        } catch (e) {
+          console.warn('Fallback message save failed', e);
+        }
+      }
+    }
+
+    // keyboard & button handlers
+    sendButton.addEventListener('click', sendMessage);
+    messageInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    chatModalOverlay.addEventListener('click', (e) => {
+      if (e.target === chatModalOverlay) closeChatModal();
+    });
+
+    // -------------------------
+    // Boot sequence
+    // -------------------------
+    (async function boot() {
+      loadingSpinner.style.display = 'block';
+      container.style.display = 'none';
+      noMatchesDiv.style.display = 'none';
+
+      // fetch current user profile so we can register socket with server
+      await fetchCurrentUser();
+
+      // setup socket.io (server will accept registerUser)
+      setupSocketIo();
+
+      // fetch matches from backend, backend includes matchScore
+      await fetchMatchesFromBackend();
+
+      loadingSpinner.style.display = 'none';
+    })();
+  </script>
+</body>
+</html>

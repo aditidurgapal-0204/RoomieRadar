@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RoomieRadar - Set Up Profile</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap" rel="stylesheet">
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background: #e75480;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        body::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: linear-gradient(to right, rgba(255,255,255,0.2) 1px, transparent 1px),
+                             linear-gradient(to bottom, rgba(255,255,255,0.2) 1px, transparent 1px);
+            background-size: 80px 80px;
+        }
+
+        .profile-container {
+            position: relative;
+            z-index: 10;
+            width: 90%;
+            max-width: 500px;
+            padding: 30px;
+            background: #fcf6d3;
+            border-radius: 10px;
+            box-shadow: 0 5px 30px rgba(54, 9, 80, 0.445);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .profile-container .logo {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 50px;
+        }
+
+        .profile-container h2 {
+            text-align: center;
+            color: #e75480;
+            margin-bottom: 25px;
+            margin-top: 30px;
+        }
+
+        .profile-photo-area {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .avatar-circle {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background-color: #ff94b6;
+            border: 4px solid #ff94b6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            cursor: pointer;
+            margin: 0 auto; /* THIS IS THE ONLY CHANGE: Centers the circle horizontally */
+        }
+
+        .avatar-circle i {
+            font-size: 48px;
+            color: #fcf6d3;
+        }
+
+        #profilePictureInput {
+            display: none;
+        }
+
+        .form-group { margin-bottom: 20px; }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 10px 0;
+            border: none;
+            border-bottom: 2px solid #e75480;
+            background: transparent;
+            font-size: 1em;
+            color: #e75480;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-bottom: 2px solid #e75480;
+        }
+
+        .btn-submit {
+            background: #e75480;
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1.1em;
+            font-weight: 600;
+            width: 100%;
+            margin-top: 25px;
+        }
+
+        .btn-submit:hover { background: #c23d68; }
+    </style>
+</head>
+
+<body>
+
+<div class="profile-container">
+
+    <img src="/images/blogo.png" class="logo">
+
+    <h2>Tell us about yourself!</h2>
+
+    <form action="/api/profile/update" method="POST" enctype="multipart/form-data">
+
+        <div class="profile-photo-area" onclick="document.getElementById('profilePictureInput').click()">
+            <div class="avatar-circle" id="avatarCircle">
+                <i class='bx bxs-camera'></i>
+            </div>
+            <input type="file" id="profilePictureInput" name="profilePicture" accept="image/*">
+        </div>
+        
+
+        <div class="form-group">
+            <label for="fullName">Full Name</label>
+            <input name="fullName" id="fullName" required>
+        </div>
+
+        <div class="form-group">
+            <label for="birthDate">Birth Date</label>
+            <input type="date" name="birthDate" id="birthDate">
+        </div>
+
+        <div class="form-group">
+            <label for="gender">Gender</label>
+            <select name="gender" id="gender" required>
+                <option value="">Select Gender</option>
+                <option>Male</option>
+                <option>Female</option>
+                <option>Other</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="course">Department</label>
+            <input name="course" id="course" required>
+        </div>
+
+        <div class="form-group">
+            <label for="yearOfStudy">Year of Study</label>
+            <select id="yearOfStudy" name="yearOfStudy" required>
+                <option value="">Select Year</option>
+                <option value="1st">1st Year</option>
+                <option value="2nd">2nd Year</option>
+                <option value="3rd">3rd Year</option>
+                <option value="4th">4th Year</option>
+                <option value="5th">5th Year</option>
+            </select>
+            <i class='bx bx-chevron-down'></i>
+        </div>
+
+        <div class="form-group">
+            <label for="permanentAddress">Permanent Address</label>
+            <input name="permanentAddress" id="permanentAddress">
+        </div>
+
+        <div class="form-group">
+            <label for="contactNumber">Contact Number</label>
+            <input type="text" name="contactNumber" id="contactNumber">
+        </div>
+
+        <div class="form-group">
+            <label for="instagramLink">Instagram Link</label>
+            <input name="instagramLink" id="instagramLink" placeholder="https://instagram.com/...">
+        </div>
+
+        <div class="form-group">
+            <label for="linkedinLink">LinkedIn Link</label>
+            <input name="linkedinLink" id="linkedinLink" placeholder="https://linkedin.com/in/...">
+        </div>
+
+        <div class="form-group">
+            <label for="bio">About Me (Bio)</label>
+            <textarea name="bio" id="bio" rows="4"></textarea>
+        </div>
+
+        <button type="submit" class="btn-submit">Save My Profile!</button>
+
+    </form>
+</div>
+
+<script>
+function handleImageUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+
+    reader.onload = function(e) {
+        const circle = document.getElementById('avatarCircle');
+        circle.innerHTML = "";
+        const img = document.createElement('img');
+        img.src = e.target.result;
+        img.style.width = "100%";
+        img.style.height = "100%";
+        img.style.objectFit = "cover";
+        circle.appendChild(img);
+    };
+
+    reader.readAsDataURL(file);
+}
+
+document.getElementById('profilePictureInput')
+    .addEventListener('change', handleImageUpload);
+</script>
+
+</body>
+</html>
